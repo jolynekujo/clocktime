@@ -4,5 +4,22 @@
     <string name="app_name">ClockTime</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
-
+	<string name="alarmclock">闹钟</string>
+	<string name="add_alarmclock">添加闹钟</string>
+	<string name="repeat">重复</string>
+	<string name="none">一律不</string>
+	<string name="label">标签</string>
+	<string name="label_default">闹钟</string>
+	<string name="ring">铃声</string>
+	<string name="ring_default">静音</string>
+	<string name="volume">音量</string>
+	<string name="finish">完成</string>
+	<string name="delete">删除</string>
+	<string name="mon">一</string>
+	<string name="tue">二</string>
+	<string name="wed">三</string>
+	<string name="thu">四</string>
+	<string name="fri">五</string>
+	<string name="sat">六</string>
+	<string name="sun">日</string>
 </resources>
