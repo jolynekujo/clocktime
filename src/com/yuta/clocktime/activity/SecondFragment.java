@@ -5,15 +5,22 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.Fragment;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.media.RingtoneManager;
@@ -38,6 +45,8 @@ import android.widget.TextView;
 
 import com.yuta.clocktime.R;
 import com.yuta.clocktime.model.AlarmClock;
+import com.yuta.clocktime.receiver.AlarmReceiver;
+import com.yuta.clocktime.receiver.CycleReceiver;
 import com.yuta.clocktime.service.AlarmService;
 
 public class SecondFragment<Gson> extends Fragment implements OnItemClickListener, OnItemLongClickListener, OnClickListener{
@@ -49,18 +58,16 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 	private AlarmAdapter adapter;
 	private ArrayList<AlarmClock> mData = new ArrayList<AlarmClock>();
 	private Intent mIntent;
-	private AlarmClock mPassAlarm;
 	//intent的数量
 	private int count = 0;
 	//开关状态
 	private ArrayList<Boolean> switchState = new ArrayList<Boolean>();
 	//指向service的intent
 	private ArrayList<Intent> intentList = new ArrayList<Intent>();
-	//listview中switch开着的数量
-	private int activedCount = 0;
 	
 	private SharedPreferences mShared;
 	private Editor mEditor;
+	
 	
 	public SecondFragment() {
 		super();
@@ -74,13 +81,12 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 		if(mShared.contains("mData-size")){
 			getData();
 		}
-		
 	}
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 			Bundle savedInstanceState) {
-		mPassAlarm = new AlarmClock();
+		new AlarmClock();
 		mIntent = new Intent(getActivity(), AlarmEditActivity.class);
 		view = inflater.inflate(R.layout.alarmclock_layout, null);
 		mShowAlarm = (ListView)view.findViewById(R.id.id_listview_alarm);
@@ -101,7 +107,7 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 	public void onItemClick(AdapterView<?> parent, View view, int position,
 			long id) {
 		
-		mPassAlarm = mData.get(position);
+		mData.get(position);
 		mIntent.putExtra("key", "modify");
 		mIntent.putExtra("count", count);
 		mIntent.putExtra("alarm-clock-"+count+"-modify", mData.get(position));
@@ -162,7 +168,7 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 		String mLabel = "闹钟";
 		int mVolume = 50;
 		Uri mRingtone = RingtoneManager.getActualDefaultRingtoneUri(getActivity(), RingtoneManager.TYPE_RINGTONE);
-		mPassAlarm = new AlarmClock(mTime, mLabel, mRepeat, mRingtone, mVolume);
+		new AlarmClock(mTime, mLabel, mRepeat, mRingtone, mVolume);
 		boolean mSwitchState = true;
 		mIntent.putExtra("switch-state", mSwitchState);
 		mIntent.putExtra("alarm-clock-"+count+"-add", new AlarmClock(mTime, mLabel, mRepeat, mRingtone, mVolume));
@@ -181,18 +187,17 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 		case 1:
 			if(resultCode==Activity.RESULT_OK){
 				AlarmClock mAlarmClock = data.getParcelableExtra("alarm-data"); 
-				switchState.add(data.getBooleanExtra("return-state", false));
-				Log.d(debug, "after add item switchState size:"+switchState.size());
+				switchState.add(data.getBooleanExtra("return-state", true));
 				mData.add(mAlarmClock);
+				int pos = mData.size()-1;
 				adapter.notifyDataSetChanged();
 				
-				activedCount++;
 				
 				//开启定时服务
 				Intent i = new Intent(getActivity(), AlarmService.class);
 				intentList.add(i);
 				i.putExtra("alarmclock-info", mAlarmClock);
-				i.putExtra("actived-count", activedCount);
+				i.putExtra("position", pos);
 				getActivity().startService(i);
 				
 			}else if(resultCode==Activity.RESULT_FIRST_USER){
@@ -210,13 +215,13 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 				adapter.notifyDataSetChanged();
 				//如果开关开启，停止之前的服务，重新开启数据修改后的服务
 				if(mReturnState){	
-					//stop background service?????
-					Intent i = intentList.get(position);
+					//should stop trigger task in service
+					Intent i = new Intent(getActivity(), AlarmService.class);
 					getActivity().stopService(i);
 					
 					Intent replaceIntent = new Intent(getActivity(), AlarmService.class);
 					replaceIntent.putExtra("alarmclock-info", mAlarmClock);
-					replaceIntent.putExtra("actived-count", activedCount);
+					replaceIntent.putExtra("position", position);
 					i.replaceExtras(replaceIntent);
 					getActivity().startService(i);
 				}
@@ -224,14 +229,19 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 				int mP = data.getIntExtra("position-back", -1);
 				boolean b = switchState.get(mP);
 				if(b){
-					Intent i = intentList.get(mP);
-					getActivity().stopService(i);
+					Intent s1 = new Intent(AlarmReceiver.START_ALARM);
+					Intent s2 = new Intent(CycleReceiver.START_CYCLE);
+					//stop trigger task in service
+					AlarmManager ma = (AlarmManager)getActivity().getSystemService(Context.ALARM_SERVICE);
+					PendingIntent pi = PendingIntent.getBroadcast(getActivity(), mP, s1, 0);
+					PendingIntent pi2 = PendingIntent.getBroadcast(getActivity(), mP, s2, 0);
+					ma.cancel(pi);
+					ma.cancel(pi2);
+//					getActivity().stopService(i);
 				}
-				Log.d(debug, "before delete switchState size:"+switchState.size()+"");
 				mData.remove(mP);
 				switchState.remove(mP);
 				intentList.remove(mP);
-				Log.d(debug, "after delete switchState size:"+switchState.size()+"");
 				boolean z = false;
 				for(int i=0; i<switchState.size(); i++){
 					if(switchState.get(i)){
@@ -407,10 +417,22 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 				
 				@Override
 				public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-					Log.d(debug, position+":"+switchState.size());
+					Log.d(debug, position+"");
+					Log.d(debug, isChecked?"true":"false");
 					if(switchState.get(position)){
-						getActivity().stopService(intentList.get(position));
+						Intent s1 = new Intent(AlarmReceiver.START_ALARM);
+						Intent s2 = new Intent(CycleReceiver.START_CYCLE);
+						//stop trigger task in service
+						AlarmManager ma = (AlarmManager)getActivity().getSystemService(Context.ALARM_SERVICE);
+						PendingIntent pi = PendingIntent.getBroadcast(getActivity(), position, s1, 0);
+						PendingIntent pi2 = PendingIntent.getBroadcast(getActivity(), position, s2, 0);
+						ma.cancel(pi);
+						ma.cancel(pi2);
+//						getActivity().stopService(new Intent(getActivity(), AlarmService.class));
+						
 						switchState.set(position, Boolean.valueOf(false));
+						NotificationManager m = (NotificationManager)getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+						m.cancel(position);
 						boolean x = false;
 						for(int i=0; i<switchState.size(); i++){
 							if(switchState.get(i)){
@@ -419,16 +441,14 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 							}
 						}
 						setStatusBarIcon(getActivity(), x);
-						activedCount--;
 					}else{
 						Intent newIntent = new Intent(getActivity(), AlarmService.class);
 						newIntent.putExtra("alarmclock-info", mData.get(position));
-						newIntent.putExtra("actived-count", activedCount);
+						newIntent.putExtra("position", position);
 						getActivity().startService(newIntent);
 						switchState.set(position, Boolean.valueOf(true));
 						setStatusBarIcon(getActivity(), true);
 						
-						activedCount++;
 					}
 				}
 			});
@@ -443,4 +463,6 @@ public class SecondFragment<Gson> extends Fragment implements OnItemClickListene
 		}
 
 	}
+	
+	
 }

@@ -16,6 +16,7 @@ import com.yuta.clocktime.service.RingtoneService;
 
 public class AlarmReceiver extends BroadcastReceiver{
 	private static final String debug = "com.yuta.clocktime.receiver.AlarmReceiver";
+	public static final String START_ALARM = "com.yuta.clocktime.receiver.AlarmReceiver";
 	private AlarmClock alarmClock = new AlarmClock();
 	private Uri ringUri = null;
 	private int volume;

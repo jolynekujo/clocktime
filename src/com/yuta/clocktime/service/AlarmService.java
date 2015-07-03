@@ -29,7 +29,7 @@ import com.yuta.clocktime.util.MyApplication;
 
 public class AlarmService extends Service{
 	private static final String debug = "com.yuta.clocktime.service.AlarmService";
-	
+	private static final String START_ALARM = "com.yuta.clocktime.service.AlarmService";
 	private AlarmClock alarmClock = new AlarmClock();
 	private Uri ringUri = null;
 	private boolean isRepeat;
@@ -46,10 +46,11 @@ public class AlarmService extends Service{
 	@SuppressWarnings("deprecation")
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
+		Log.d(debug, "AlarmService onStartCommand");
 		Log.d(debug, "startId:"+startId);
 		
 		alarmClock = intent.getParcelableExtra("alarmclock-info");
-		int activedCount = intent.getIntExtra("actived-count", 0);
+		int position = intent.getIntExtra("position", -1);
 		isRepeat = false;
 		Log.d(debug, alarmClock.getAlarmTime()+";"+alarmClock.getRing());
 		if(alarmClock.getFrequency().size()>0){
@@ -87,7 +88,7 @@ public class AlarmService extends Service{
 		Notification notification = new Notification(R.drawable.ic_alarm_black_48dp, notText, System.currentTimeMillis());
 		notification.setLatestEventInfo(getApplicationContext(),tl , text, null);
 		NotificationManager mManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
-		mManager.notify(1, notification);
+		mManager.notify(position, notification);
 		SecondFragment.setStatusBarIcon(this, true);
 		//设置等待时间
 		AlarmManager manager = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
@@ -102,17 +103,19 @@ public class AlarmService extends Service{
 			
 		}, waitTime);
 		
-		Intent intent1 = new Intent(this, AlarmReceiver.class);
+		Intent intent1 = new Intent(AlarmReceiver.START_ALARM);
+		Intent intent2 = new Intent(CycleReceiver.START_CYCLE);
+		
+		//return intent1 and intent2 to SecondFragment which use them to cancel AlarmManager task
+		
 		intent1.putExtra("alarm-data-service", alarmClock);
 		Log.d(debug, alarmClock.getRing().toString()+"");
-		PendingIntent pi = PendingIntent.getBroadcast(this, 0, intent1, PendingIntent.FLAG_UPDATE_CURRENT);
+		PendingIntent pi = PendingIntent.getBroadcast(this, position, intent1, PendingIntent.FLAG_UPDATE_CURRENT);
 		manager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtTime, pi);
 		
-		Intent intent2 = new Intent(this, CycleReceiver.class);
 		intent2.putExtra("isRepeat", isRepeat);
 		intent2.putExtra("alarm-data-service", alarmClock);
-		intent2.putExtra("actived-count", activedCount);
-		PendingIntent pi2 = PendingIntent.getBroadcast(this, 1, intent2, PendingIntent.FLAG_UPDATE_CURRENT);
+		PendingIntent pi2 = PendingIntent.getBroadcast(this, position, intent2, PendingIntent.FLAG_UPDATE_CURRENT);
 		manager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtTime, pi2);
 		return super.onStartCommand(intent1, flags, startId);
 	}
@@ -185,5 +188,17 @@ public class AlarmService extends Service{
 			wt = min;
 		}
 		return wt;
+	}
+
+	@Override
+	public void onDestroy() {
+		Log.d(debug, "AlarmService onDestroy");
+		super.onDestroy();
+	}
+
+	@Override
+	public void onCreate() {
+		Log.d(debug, "AlarmService onCreate");
+		super.onCreate();
 	}
 }

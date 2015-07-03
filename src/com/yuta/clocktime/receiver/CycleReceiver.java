@@ -11,6 +11,7 @@ import com.yuta.clocktime.service.AlarmService;
 
 public class CycleReceiver extends BroadcastReceiver{
 	private static final String debug = "com.yuta.clocktime.receiver.CycleReceiver";
+	public static final String START_CYCLE = "com.yuta.clocktime.receiver.CycleReceiver";
 
 	@Override
 	public void onReceive(Context context, Intent intent) {
@@ -24,9 +25,7 @@ public class CycleReceiver extends BroadcastReceiver{
 			Log.d(debug, returnIntent==null?"0":"1");
 			context.startService(returnIntent);
 		}else{
-			if(activedCount-1==0){
 				SecondFragment.setStatusBarIcon(context, false);
-			}
 			Log.d(debug, "AlarmService stop");
 			//将对应的switch设置为关
 		}

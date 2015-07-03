@@ -99,7 +99,7 @@ public class AlarmEditActivity extends BaseActivity implements OnClickListener{
 		Intent i = getIntent();
 		if(i.getStringExtra("key").equals("add")){
 			mAlarmClock = i.getParcelableExtra("alarm-clock-"+i.getIntExtra("count", 0)+"-add");
-			switchState = i.getBooleanExtra("switch-state", false);
+			switchState = i.getBooleanExtra("switch-state", true);
 		}
 		if(i.getStringExtra("key").equals("modify")){
 			position = i.getIntExtra("position", -1);
